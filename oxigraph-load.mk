@@ -32,20 +32,12 @@ include $(MK_DIR)/oxigraph.mk
 include $(MK_DIR)/rdf-http-load.mk
 
 # SPARQL endpoints for Oxigraph.
-# When oxigraph-* targets are explicitly requested (detected via MAKECMDGOALS above),
-# force Oxigraph endpoints with := to override any values set by dotenvage.
-# Otherwise use ?= as defaults for when EKG_VARIANT is already oxigraph.
-ifneq ($(filter oxigraph-%,$(MAKECMDGOALS)),)
-EKG_SPARQL_HEALTH_ENDPOINT := http://localhost:$(OXIGRAPH_PORT)/
-EKG_SPARQL_QUERY_ENDPOINT := http://localhost:$(OXIGRAPH_PORT)/query
-EKG_SPARQL_UPDATE_ENDPOINT := http://localhost:$(OXIGRAPH_PORT)/update
-EKG_SPARQL_STORE_ENDPOINT := http://localhost:$(OXIGRAPH_PORT)/store
-else
+# All endpoint URLs and auth keys come from dotenvage (.env files).
+# Fallback defaults only apply when dotenvage hasn't set them.
 EKG_SPARQL_HEALTH_ENDPOINT ?= http://localhost:$(OXIGRAPH_PORT)/
 EKG_SPARQL_QUERY_ENDPOINT ?= http://localhost:$(OXIGRAPH_PORT)/query
 EKG_SPARQL_UPDATE_ENDPOINT ?= http://localhost:$(OXIGRAPH_PORT)/update
 EKG_SPARQL_STORE_ENDPOINT ?= http://localhost:$(OXIGRAPH_PORT)/store
-endif
 
 # Environment for flag files - prevents cross-environment conflicts
 EKG_ENV ?= local
@@ -164,29 +156,14 @@ oxigraph-http-load-flags-delete: rdf-http-load-flags-delete
 oxigraph-server-check: sparql-server-check
 
 #
-# HTTP load: loads to running server via HTTP (incremental, parallel-safe)
-# Automatically runs with -j10 for parallel loading
-# Requires server to be running (checks first)
+# HTTP load: loads to running server via rdf-loader (incremental, hash-based)
+# Delegates to pnpm exec rdf-loader which handles file discovery,
+# content-hash change detection, parallel uploads, and SPARQL inlining.
+# Requires server to be running.
 #
-OXIGRAPH_HTTP_LOAD_JOBS ?= 20
-
 .PHONY: oxigraph-http-load
-oxigraph-http-load: oxigraph-server-check
-	@$(MAKE) -j$(OXIGRAPH_HTTP_LOAD_JOBS) --no-print-directory \
-		EKG_VARIANT=$(EKG_VARIANT) \
-		EKG_SPARQL_HEALTH_ENDPOINT=$(EKG_SPARQL_HEALTH_ENDPOINT) \
-		EKG_SPARQL_QUERY_ENDPOINT=$(EKG_SPARQL_QUERY_ENDPOINT) \
-		EKG_SPARQL_UPDATE_ENDPOINT=$(EKG_SPARQL_UPDATE_ENDPOINT) \
-		EKG_SPARQL_STORE_ENDPOINT=$(EKG_SPARQL_STORE_ENDPOINT) \
-		_rdf-http-load-files
-	@printf "$(green)HTTP loaded all RDF files$(normal)\n"
-	@$(MAKE) --no-print-directory \
-		EKG_VARIANT=$(EKG_VARIANT) \
-		EKG_SPARQL_HEALTH_ENDPOINT=$(EKG_SPARQL_HEALTH_ENDPOINT) \
-		EKG_SPARQL_QUERY_ENDPOINT=$(EKG_SPARQL_QUERY_ENDPOINT) \
-		EKG_SPARQL_UPDATE_ENDPOINT=$(EKG_SPARQL_UPDATE_ENDPOINT) \
-		EKG_SPARQL_STORE_ENDPOINT=$(EKG_SPARQL_STORE_ENDPOINT) \
-		_rdf-http-load-sparql-queries
+oxigraph-http-load:
+	@pnpm exec rdf-loader --oxigraph load
 
 #
 # Convenience aliases
@@ -198,7 +175,8 @@ oxigraph-load: oxigraph-bulk-load
 oxigraph-reload: oxigraph-bulk-load-flags-delete oxigraph-bulk-load
 
 .PHONY: oxigraph-http-reload
-oxigraph-http-reload: oxigraph-http-load-flags-delete oxigraph-http-load
+oxigraph-http-reload:
+	@pnpm exec rdf-loader --oxigraph load --force
 
 oxigraph-graph-names: $(RDF_FILES)
 	@for file in $? ; do \

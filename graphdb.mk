@@ -53,20 +53,12 @@ GRAPHDB_DOCKERFILE ?= $(GIT_ROOT)/Dockerfile.graphdb
 GRAPHDB_REPO_NAME ?= ekg
 
 # SPARQL endpoints for GraphDB.
-# When graphdb-* targets are explicitly requested (detected via MAKECMDGOALS above),
-# force GraphDB endpoints with := to override any values set by dotenvage.
-# Otherwise use ?= as defaults for when EKG_VARIANT is already graphdb.
-ifneq ($(filter graphdb-%,$(MAKECMDGOALS)),)
-EKG_SPARQL_HEALTH_ENDPOINT := http://localhost:$(GRAPHDB_PORT)/rest/repositories
-EKG_SPARQL_QUERY_ENDPOINT := http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)
-EKG_SPARQL_UPDATE_ENDPOINT := http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)/statements
-EKG_SPARQL_STORE_ENDPOINT := http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)/rdf-graphs/service
-else
+# All endpoint URLs and auth keys come from dotenvage (.env files).
+# Fallback defaults only apply when dotenvage hasn't set them.
 EKG_SPARQL_HEALTH_ENDPOINT ?= http://localhost:$(GRAPHDB_PORT)/rest/repositories
 EKG_SPARQL_QUERY_ENDPOINT ?= http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)
 EKG_SPARQL_UPDATE_ENDPOINT ?= http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)/statements
 EKG_SPARQL_STORE_ENDPOINT ?= http://localhost:$(GRAPHDB_PORT)/repositories/$(GRAPHDB_REPO_NAME)/rdf-graphs/service
-endif
 
 # Container and volume names derived from triplestore-docker.mk
 GRAPHDB_CONTAINER_NAME = $(TRIPLESTORE_CONTAINER_NAME)
@@ -243,35 +235,21 @@ graphdb-status:
 	fi
 
 #
-# HTTP load: loads to running GraphDB server via HTTP (incremental, parallel-safe)
-# Automatically runs with -j20 for parallel loading
-# Requires server to be running (checks first)
+# HTTP load: loads to running GraphDB server via rdf-loader (incremental, hash-based)
+# Delegates to pnpm exec rdf-loader which handles file discovery,
+# content-hash change detection, parallel uploads, and SPARQL inlining.
+# Requires server to be running.
 #
-GRAPHDB_HTTP_LOAD_JOBS ?= 20
-
 .PHONY: graphdb-http-load
-graphdb-http-load: sparql-server-check
-	@$(MAKE) -j$(GRAPHDB_HTTP_LOAD_JOBS) --no-print-directory \
-		EKG_VARIANT=$(EKG_VARIANT) \
-		EKG_SPARQL_HEALTH_ENDPOINT=$(EKG_SPARQL_HEALTH_ENDPOINT) \
-		EKG_SPARQL_QUERY_ENDPOINT=$(EKG_SPARQL_QUERY_ENDPOINT) \
-		EKG_SPARQL_UPDATE_ENDPOINT=$(EKG_SPARQL_UPDATE_ENDPOINT) \
-		EKG_SPARQL_STORE_ENDPOINT=$(EKG_SPARQL_STORE_ENDPOINT) \
-		_rdf-http-load-files
-	@printf "$(green)HTTP loaded all RDF files to GraphDB$(normal)\n"
-	@$(MAKE) --no-print-directory \
-		EKG_VARIANT=$(EKG_VARIANT) \
-		EKG_SPARQL_HEALTH_ENDPOINT=$(EKG_SPARQL_HEALTH_ENDPOINT) \
-		EKG_SPARQL_QUERY_ENDPOINT=$(EKG_SPARQL_QUERY_ENDPOINT) \
-		EKG_SPARQL_UPDATE_ENDPOINT=$(EKG_SPARQL_UPDATE_ENDPOINT) \
-		EKG_SPARQL_STORE_ENDPOINT=$(EKG_SPARQL_STORE_ENDPOINT) \
-		_rdf-http-load-sparql-queries
+graphdb-http-load:
+	@pnpm exec rdf-loader --graphdb load
 
 .PHONY: graphdb-http-load-flags-delete
 graphdb-http-load-flags-delete: rdf-http-load-flags-delete
 
 .PHONY: graphdb-http-reload
-graphdb-http-reload: graphdb-http-load-flags-delete graphdb-http-load
+graphdb-http-reload:
+	@pnpm exec rdf-loader --graphdb load --force
 
 #
 # Bulk load alias (uses HTTP load since GraphDB doesn't have CLI bulk load)
