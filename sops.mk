@@ -23,7 +23,7 @@ include $(MK_DIR)/make.mk
 include $(MK_DIR)/sops-generate.mk
 -include $(GIT_ROOT)/.sops-variables.mk
 
-SOPS_VERSION_EXPECTED := 3.9.4
+SOPS_VERSION_EXPECTED := 3.12.1
 SOPS_INSTALL := 1
 ifndef SOPS_KEYS_ORG
 SOPS_KEYS_ORG := ekgf

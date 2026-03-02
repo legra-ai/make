@@ -27,7 +27,7 @@ else
 $(warning LLVM CLANG is not installed)
 endif
 
-CLANG_MAIN_VERSION_EXPECTED := 19
+CLANG_MAIN_VERSION_EXPECTED := 22
 
 .PHONY: clang-check
 ifndef CLANG_VERSION

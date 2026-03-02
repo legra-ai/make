@@ -30,7 +30,7 @@ ifdef TERRAGRUNT_BIN
 TERRAGRUNT_VERSION := $(shell $(TERRAGRUNT_BIN) --version 2>/dev/null | cut -d\  -f3)
 endif
 # keep the line below in sync with version published at https://formulae.brew.sh/formula/terragrunt
-TERRAGRUNT_VERSION_EXPECTED := 0.97.1
+TERRAGRUNT_VERSION_EXPECTED := 0.99.4
 ifeq ($(TERRAGRUNT_VERSION),$(TERRAGRUNT_VERSION_EXPECTED))
 TERRAGRUNT_CHECKED := 1
 else

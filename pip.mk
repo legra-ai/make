@@ -24,7 +24,7 @@ endif
 ifdef PIP_BIN
 PIP_VERSION := $(shell $(PIP_BIN) --version 2>/dev/null | cut -d\  -f2)
 endif
-PIP_VERSION_EXPECTED := 25.2
+PIP_VERSION_EXPECTED := 26.0
 ifeq ($(PIP_VERSION),$(PIP_VERSION_EXPECTED))
 PIP_CHECKED := 1
 else

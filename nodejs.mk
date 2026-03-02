@@ -18,7 +18,7 @@ NODEJS_BIN := $(call where-is-binary,node)
 ifdef NODEJS_BIN
 NODEJS_VERSION := $(shell $(NODEJS_BIN) --version 2>/dev/null | cut -d\  -f2 | cut -c2-)
 endif
-NODEJS_VERSION_EXPECTED := 22.21.1
+NODEJS_VERSION_EXPECTED := 24.13.0
 NODEJS_MAIN_VERSION_EXPECTED := $(shell echo $(NODEJS_VERSION_EXPECTED) | cut -d. -f1)
 ifeq ($(NODEJS_VERSION),$(NODEJS_VERSION_EXPECTED))
 NODEJS_CHECKED := 1
