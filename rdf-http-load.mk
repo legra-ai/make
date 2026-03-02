@@ -19,12 +19,9 @@ endif
 include $(MK_DIR)/rdf-files.mk
 include $(MK_DIR)/curl.mk
 
-# Build auth header for remote SPARQL requests (empty for local dev without token)
-ifdef EKG_SPARQL_AUTH_KEY
-SPARQL_AUTH_HEADER := -H "Authorization: Bearer $(EKG_SPARQL_AUTH_KEY)"
-else
-SPARQL_AUTH_HEADER :=
-endif
+# Build auth header for SPARQL requests (empty when EKG_SPARQL_AUTH_KEY is not set).
+# Uses deferred expansion (=) so the value is resolved at recipe execution time.
+SPARQL_AUTH_HEADER = $(if $(EKG_SPARQL_AUTH_KEY),-H "Authorization: Bearer $(EKG_SPARQL_AUTH_KEY)",)
 
 # Environment for flag files - prevents cross-environment conflicts
 # e.g., loading to production won't mark files as loaded for local
