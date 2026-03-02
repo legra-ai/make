@@ -51,6 +51,9 @@ _FLY_DEFAULT_CPUS := 2
 _FLY_DEFAULT_VOLUME_SIZE := 10
 endif
 
+# Default CPU kind (can be overridden per variant)
+FLY_CPU_KIND ?= shared
+
 # Variant-specific settings
 ifeq ($(EKG_VARIANT),oxigraph)
 FLY_DOCKERFILE ?= Dockerfile.oxigraph
@@ -84,6 +87,24 @@ FLY_BUILD_ARGS_TOML_CLI ?= EKG_ENV=$(EKG_ENV)
 FLY_HEALTH_GRACE_PERIOD ?= 60s
 # GraphDB returns 406 on /, use REST API endpoint instead
 FLY_HEALTH_PATH ?= /rest/repositories
+endif
+
+ifeq ($(EKG_VARIANT),graphstudio)
+FLY_DOCKERFILE ?= Dockerfile.graphstudio
+FLY_INTERNAL_PORT ?= 8080
+FLY_MEMORY ?= 8gb
+FLY_CPUS ?= 4
+FLY_CPU_KIND ?= performance
+FLY_VOLUME_NAME ?= graphstudio_data
+FLY_VOLUME_SIZE ?= 20
+FLY_MOUNT_DEST ?= /opt/graphstudio-data
+FLY_PROCESS_CMD ?=
+FLY_ENV_VARS ?= JAVA_OPTS = "-Xmx6g"
+FLY_BUILD_ARGS_TOML ?= EKG_ENV = "$(EKG_ENV)"
+FLY_BUILD_ARGS_CLI ?= EKG_ENV=$(EKG_ENV)
+# Graph Studio takes ~90s to start, need longer grace period
+FLY_HEALTH_GRACE_PERIOD ?= 120s
+FLY_HEALTH_PATH ?= /anzo/status
 endif
 
 # fly.toml output path
@@ -166,6 +187,10 @@ endif
 	fi
 	@printf '%s\n' \
 		'' \
+		'[http_service.http_options]' \
+		'h2_backend = true' >> $(FLY_TOML)
+	@printf '%s\n' \
+		'' \
 		'[http_service.concurrency]' \
 		'type = "connections"' \
 		'hard_limit = 100' \
@@ -180,7 +205,7 @@ endif
 		'' \
 		'[[vm]]' \
 		'memory = "$(FLY_MEMORY)"' \
-		'cpu_kind = "shared"' \
+		'cpu_kind = "$(FLY_CPU_KIND)"' \
 		'cpus = $(FLY_CPUS)' >> $(FLY_TOML)
 	@echo "Generated $(FLY_TOML)"
 
